@@ -23,8 +23,8 @@ class TCG:
         self.net = NetStruct
         self.layer_num = len(self.net)
         self.layer_tileinfo = []
-        self.mapping_order = -1 * np.ones(self.tile_num)  # 按一定顺序定义tilt映射矩阵每一个元素的顺序，如按蛇形、回型、Z型给每个元素标序号，每层权重按序号增加的顺序依次布置到每个tile上
-        self.mapping_result = -1 * np.ones(self.tile_num)  # 记录最终每个tile存储的是第几层的权重，数值是层的序号
+        self.mapping_order = -1 * np.ones(self.tile_num)  
+        self.mapping_result = -1 * np.ones(self.tile_num)  
 
         start_tileid = 0  # the start tile id
         # self.max_inbuf_size_pe = 0  # the maximum input buffer size of each PE, unit: KB
@@ -40,7 +40,7 @@ class TCG:
                 self.multiple[layer_id] = layer_dict['Multiple']
 
         for layer_id in range(self.layer_num):
-            layer_dict = self.net[layer_id][0][0]  # 第一维：层数   第二维：tile数   第三维：0为layer_info字典，1为权重矩阵
+            layer_dict = self.net[layer_id][0][0] 
             layer_type = layer_dict['type']
 
             tmp_tileinfo = collections.OrderedDict()
@@ -94,7 +94,7 @@ class TCG:
 
                 # 计算PE层data_inbuf大小，Tile层data_outbuf大小 buffer_size: unit Byte
                 data_inbuf_pe = input_size * inputchannel * int(layer_dict['Inputbit']) / 8
-                data_outbuf_pe = int(layer_dict['Outputchannel']) * int(layer_dict['Outputbit']) / 8   # 修改5，所有PE outbuf中的数据应该与tile中的数据相同
+                data_outbuf_pe = int(layer_dict['Outputchannel']) * int(layer_dict['Outputbit']) / 8   
                 data_outbuf_tile = output_size * outputchannel * int(layer_dict['Outputbit']) / 8
 
             elif layer_type == 'fc':
@@ -135,7 +135,7 @@ class TCG:
                 # buffer_size: unit Byte
                 data_inbuf_pe = int(layer_dict['Inputchannel']) * int(layer_dict['Inputbit']) / 8
                 # data_outbuf_pe = math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num
-                data_outbuf_pe = int(layer_dict['Outputchannel']) * int(layer_dict['Outputbit']) / 8   # 修改5，所有PE outbuf中的数据应该与tile中的数据相同
+                data_outbuf_pe = int(layer_dict['Outputchannel']) * int(layer_dict['Outputbit']) / 8   
                 data_outbuf_tile = int(layer_dict['Outputchannel']) * int(layer_dict['Outputbit']) / 8
 
             elif layer_type == 'pooling':
@@ -217,9 +217,9 @@ class TCG:
                 data_outbuf_pe = data_outbuf_pe / (tmp_tileinfo['PEnum'] * layer_dict['Multiple'] * layer_dict['Multiple'])
                 if layer_dict['reuse_ratio'] != 0:
                     if 'similar' in layer_dict['mode']:
-                        data_outbuf_pe = data_outbuf_pe + 2 * math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num  # 暂存可以重用的部分和结果
+                        data_outbuf_pe = data_outbuf_pe + 2 * math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num  
                     else:
-                        data_outbuf_pe = data_outbuf_pe + math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num  # 暂存可以重用的部分和结果
+                        data_outbuf_pe = data_outbuf_pe + math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num  
                 tmp_outbuf_size_pe = math.pow(2, math.ceil(math.log(data_outbuf_pe, 2))) / 1024
 
                 data_outbuf_tile = data_outbuf_tile / (layer_dict['Multiple'] * layer_dict['Multiple'])
@@ -229,29 +229,8 @@ class TCG:
                 tmp_inbuf_size_pe = 0
                 tmp_outbuf_size_pe = 0
                 tmp_outbuf_size_tile = 0
-
-            # if tmp_inbuf_size_pe > self.max_inbuf_size_pe:
-            #     self.max_inbuf_size_pe = tmp_inbuf_size_pe
-            # if tmp_outbuf_size_pe > self.max_outbuf_size_pe:
-            #     self.max_outbuf_size_pe = tmp_outbuf_size_pe
-            # if tmp_outbuf_size_tile > self.max_outbuf_size_tile:
-            #     self.max_outbuf_size_tile = tmp_outbuf_size_tile
-
+                
             data_outbuf_pe_index = 0
-            # if layer_dict['prune_ratio'] != 0:
-            #     if 'shape' in layer_dict['mode']:
-            #         data_outbuf_pe_index = data_outbuf_pe_index + (math.ceil(tmp_tileinfo['max_row'] / self.OU_size[0])) * (4 + 1) * 8 * self.tile.PE_xbar_num  # 每个PE额外需要：OU行数 * (4个位置信息+1个数量信息) * weight_pattern种类个索引 * crossbar数
-            #     if 'ORC' in layer_dict['mode']:
-            #         data_outbuf_pe_index = data_outbuf_pe_index + self.OU_size[0] * (math.ceil(tmp_tileinfo['max_row'] / self.OU_size[0])) * (math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1])) * self.tile.PE_xbar_num  # 每个OU额外需要8个索引
-            #     if 'structure' in layer_dict['mode']:
-            #         data_outbuf_pe_index = data_outbuf_pe_index + self.OU_size[0] * (math.ceil(tmp_tileinfo['max_row'] / self.OU_size[0]))
-            # if layer_dict['reuse_ratio'] != 0:
-            #     data_outbuf_pe_index = data_outbuf_pe_index + math.ceil(tmp_tileinfo['max_row'] / self.OU_size[0]) * math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num  # 每个部分和结果需要额外存储重用weight_pattern_id的索引
-            #     if 'similar' in layer_dict['mode']:
-            #         data_outbuf_pe_index = data_outbuf_pe_index + math.ceil(tmp_tileinfo['max_row'] / self.OU_size[0]) * math.ceil(tmp_tileinfo['max_column'] / self.OU_size[1]) * self.tile.PE_xbar_num  # 每个部分和结果需要额外存储重用weight_pattern的放缩倍数
-            # if data_outbuf_pe_index != 0:
-            #     tmp_outbuf_size_pe_index = math.pow(2, math.ceil(math.log(data_outbuf_pe_index, 2))) / 1024
-            # else:
             tmp_outbuf_size_pe_index = 0
             # if tmp_outbuf_size_pe_index > self.max_outbuf_size_pe_index:
             #     self.max_outbuf_size_pe_index = tmp_outbuf_size_pe_index

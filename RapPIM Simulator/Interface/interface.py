@@ -26,7 +26,6 @@ class TrainTestInterface(object):
         self.xbar_column = xbar_size[1]
         self.hardware_config['xbar_size'] = xbar_size[0]
         self.hardware_config['weight_bit'] = 1
-        # tmp_OU_size = list(map(int, xbar_config.get('Crossbar level', 'OU_Size').split(',')))  # 修改1，获取当前OU大小
 
         # group num
         self.PE_xbar_num = int(xbar_config.get('Process element level', 'Group_Num'))
@@ -47,9 +46,9 @@ class TrainTestInterface(object):
         self.net = import_module('Interface.network').get_net(self.hardware_config, self.network_module, num_classes, mode, condition)
 
     def get_structure(self):
-        self.net.get_structure()  # 计算需要多少个OU行、OU列，设置input_bit,output_bit与weight_cycle
-        self.net.set_reuse_and_prune_ratio()  # 为CONV层和FC层设置剪枝率与重用率
-        self.net.get_weights()    # 针对CONV层与FC层，假设当前加速器中有N*N个加速器，此处计算出本层在行层面需要多少个crossbar，列层面需要多少个crossbar，以及需要的总crossbar数量
+        self.net.get_structure()  
+        self.net.set_reuse_and_prune_ratio()  
+        self.net.get_weights()    
         net_structure_info = self.net.net_info
         net_bit_weights = self.net.net_bit_weights
         assert len(net_bit_weights) == len(net_structure_info)
@@ -120,39 +119,26 @@ class TrainTestInterface(object):
                 complete_bar_column = layer_structure_info['OU_column_number'] / math.floor(self.hardware_config['xbar_size'] / self.net.OU_size[1])
                 tile_number_row = math.ceil(math.ceil(complete_bar_row) / (self.tile_row * self.tile_column))
                 tile_number_column = math.ceil(math.ceil(complete_bar_column) / self.PE_xbar_num)
-                # layer_structure_info['tile_number'] = tile_number_row * tile_number_column
-                # layer_structure_info['max_row'] = math.ceil(min(layer_structure_info['Inputchannel'] * (layer_structure_info['Kernelsize'] ** 2), self.xbar_row) * (complete_bar_row / (tile_number_row * self.tile_row * self.tile_column)) / self.net.OU_size[0]) * int(self.net.OU_size[0])
-                # layer_structure_info['max_column'] = math.ceil(min(layer_structure_info['Outputchannel'] * layer_structure_info['Weightbit'], self.xbar_column) * (complete_bar_column / (tile_number_column * self.PE_xbar_num)) / self.net.OU_size[1]) * int(self.net.OU_size[1])
-
                 layer_structure_info['tile_number'] = tile_number_row * tile_number_column
                 layer_structure_info['max_row'] = math.ceil(layer_structure_info['Inputchannel']* (layer_structure_info['Kernelsize'] ** 2) / (tile_number_row * self.tile_row * self.tile_column) / self.net.OU_size[0]) * int(self.net.OU_size[0])
                 layer_structure_info['max_column'] = math.ceil((layer_structure_info['Outputchannel'] * layer_structure_info['Weightbit']) / (tile_number_column * self.PE_xbar_num) / self.net.OU_size[1]) * int(self.net.OU_size[1])
 
             if layer_structure_info['type'] == 'fc':
-                complete_bar_row = layer_structure_info['OU_row_number'] / math.floor(self.hardware_config['xbar_size'] / self.net.OU_size[0])        # OU行占当前crossbar的比例
-                complete_bar_column = layer_structure_info['OU_column_number'] / math.floor(self.hardware_config['xbar_size'] / self.net.OU_size[1])  # OU列占当前crossbar的比例
+                complete_bar_row = layer_structure_info['OU_row_number'] / math.floor(self.hardware_config['xbar_size'] / self.net.OU_size[0])        
+                complete_bar_column = layer_structure_info['OU_column_number'] / math.floor(self.hardware_config['xbar_size'] / self.net.OU_size[1]) 
                 tile_number_row = math.ceil(math.ceil(complete_bar_row) / (self.tile_row * self.tile_column))
                 tile_number_column = math.ceil(math.ceil(complete_bar_column) / self.PE_xbar_num)
-                # layer_structure_info['tile_number'] = tile_number_row * tile_number_column
-                # layer_structure_info['max_row'] = math.ceil(min(layer_structure_info['Inputchannel'], self.xbar_row) * (complete_bar_row / (tile_number_row * self.tile_row * self.tile_column)) / self.net.OU_size[0]) * int(self.net.OU_size[0])
-                # layer_structure_info['max_column'] = math.ceil(min(layer_structure_info['Outputchannel'] * layer_structure_info['Weightbit'], self.xbar_column) * (complete_bar_column / (tile_number_column * self.PE_xbar_num)) / self.net.OU_size[1]) * int(self.net.OU_size[1])
-
                 layer_structure_info['tile_number'] = tile_number_row * tile_number_column
                 layer_structure_info['max_row'] = math.ceil(layer_structure_info['Inputchannel'] / (tile_number_row * self.tile_row * self.tile_column) / self.net.OU_size[0]) * int(self.net.OU_size[0])
                 layer_structure_info['max_column'] = math.ceil((layer_structure_info['Outputchannel'] * layer_structure_info['Weightbit']) / (tile_number_column * self.PE_xbar_num) / self.net.OU_size[1]) * int(self.net.OU_size[1])
 
-
-                # layer_structure_info['tile_number'] = math.ceil(layer_structure_info['Crossbar_number'] / tile_crossbar_number)
-                # layer_structure_info['max_row'] = math.ceil(min(layer_structure_info['Inputchannel'], self.xbar_row) / self.net.OU_size[0]) * int(self.net.OU_size[0])
-                # layer_structure_info['max_column'] = math.ceil(min(layer_structure_info['Outputchannel'] * layer_structure_info['Weightbit'], self.xbar_column) / self.net.OU_size[1]) * int(self.net.OU_size[1])
-            # max_crossbar_number = layer_structure_info['tile_number'] * tile_crossbar_number
-            xk_Config = configparser.ConfigParser()     # 修改3，有时候一层的权重值太少，就算均匀分布也占据不了全部的crossbar，在列维度上，如果in_channel的数量大于9，output_channel的数量大于8，才会占据全部的crossbar
+            xk_Config = configparser.ConfigParser()     
             xk_Config.read('../SimConfig.ini', encoding='UTF-8')
             xk_pePerTile = list(map(int, xk_Config.get('Tile level', 'PE_Num').split(',')))
-            xk_PE_row = min(layer_structure_info['Inputchannel'],xk_pePerTile[0]*xk_pePerTile[1])  # 当前Tile中用到了多少个PE
+            xk_PE_row = min(layer_structure_info['Inputchannel'],xk_pePerTile[0]*xk_pePerTile[1])  
 
             xk_xbarPerPE = list(map(int, xk_Config.get('Process element level', 'Group_Num').split(',')))
-            xk_PE_column = min(layer_structure_info['Outputchannel'], xk_xbarPerPE[0])             # 每个PE用了多少个crossbar
+            xk_PE_column = min(layer_structure_info['Outputchannel'], xk_xbarPerPE[0])             
             max_crossbar_number = layer_structure_info['tile_number'] * xk_PE_row*xk_PE_column
 
             layer_structure_info['Crossbar_number'] = max_crossbar_number
@@ -161,9 +147,9 @@ class TrainTestInterface(object):
             for i in range(0, max_crossbar_number, self.PE_xbar_num):
                 pe_array = []
                 for j in range(0, self.PE_xbar_num):
-                    pe_array.append(np.ones((layer_structure_info['max_row'], layer_structure_info['max_column'])))  # 暂且用1代表每个ceil已被使用，暂不考虑每个ceil具体的值
+                    pe_array.append(np.ones((layer_structure_info['max_row'], layer_structure_info['max_column'])))  
                 xbar_array.append(pe_array)
-            self.net.net_info[layer_num]['PE_number'] = len(xbar_array)  # 此处赋值应该是没用的，以后只会用到layer_structure_info了
+            self.net.net_info[layer_num]['PE_number'] = len(xbar_array) 
             layer_structure_info['PE_number'] = len(xbar_array)
 
             # store in xbar_array

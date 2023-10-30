@@ -21,9 +21,7 @@ class NetworkGraph:
         self.input_index_list = copy.deepcopy(input_index_list)
         self.input_params = copy.deepcopy(input_params)
         self.activation_config_list = copy.deepcopy(activation_config_list)
-
-        # self.base_size = 8     # 更改1：该值用于将同一层重复部署到不同的Tile上，这里我的实验用不到，不用开启这种优化
-        xbar_config = configparser.ConfigParser()  # 更改1：修正OU大小获取方式，从赋定值修改为从SimConfig.ini文件中获取
+        xbar_config = configparser.ConfigParser() 
         xbar_config.read('../SimConfig.ini', encoding='UTF-8')
         self.OU_size = list(map(int, xbar_config.get('Crossbar level', 'OU_Size').split(',')))
         self.net_info = []
@@ -48,7 +46,7 @@ class NetworkGraph:
                 complete_bar_column = math.ceil(self.net_info[i]['OU_column_number'] / math.floor(self.hardware_config['xbar_size'] / self.OU_size[1]))
                 self.net_info[i]['Crossbar_number'] = complete_bar_row * complete_bar_column
                 for j in range(0, self.net_info[i]['Crossbar_number']):
-                    bit_weights[f'split{i}_weight{j}'] = np.ones((self.hardware_config['xbar_size'], self.hardware_config['xbar_size']))  # 暂且用1代表每个ceil已被使用，暂不考虑每个ceil具体的值
+                    bit_weights[f'split{i}_weight{j}'] = np.ones((self.hardware_config['xbar_size'], self.hardware_config['xbar_size']))  
             net_bit_weights.append(bit_weights)
 
         self.net_bit_weights = net_bit_weights
@@ -89,7 +87,6 @@ class NetworkGraph:
                 output_size[i] = int((input_size[i] + 2 * self.layer_config_list[i]['padding'] - (self.layer_config_list[i]['kernel_size'] - 1)) / self.layer_config_list[i]['stride'])
                 layer_info['Inputsize'] = [input_size[i], input_size[i]]
                 layer_info['Outputsize'] = [output_size[i], output_size[i]]
-                # layer_info['Multiple'] = math.ceil(output_size[i] / self.base_size) # 更改1：将Multiple修改为1，即取消将单层重复部署到不同的Tile上
                 layer_info['Multiple'] = 1
 
             elif self.layer_config_list[i]['type'] == 'fc':
@@ -116,7 +113,7 @@ class NetworkGraph:
                 layer_info['Inputsize'] = [input_size[i], input_size[i]]
                 layer_info['Outputsize'] = [output_size[i], output_size[i]]
                 # layer_info['Multiple'] = math.ceil(output_size[i] / self.base_size)
-                layer_info['Multiple'] = 1  #修改1
+                layer_info['Multiple'] = 1  
 
             elif self.layer_config_list[i]['type'] == 'relu':
                 layer_info['type'] = 'relu'
@@ -142,7 +139,7 @@ class NetworkGraph:
 
             layer_info['Inputbit'] = int(self.quantize_config_list[i]['activation_bit'])
             layer_info['Weightbit'] = int(self.quantize_config_list[i]['weight_bit'])
-            layer_info['Outputbit'] = layer_info['Inputbit']  # 修改->output_bit与input_bit位数相同
+            layer_info['Outputbit'] = layer_info['Inputbit']  
             # if i != len(self.layer_config_list) - 1:
             #     layer_info['Outputbit'] = int(self.quantize_config_list[i+1]['activation_bit'])
             # else:
@@ -198,9 +195,9 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
         layer_config_list.append({'type': 'relu'})
         layer_config_list.append({'type': 'fc', 'in_features': 4096, 'out_features': 10, 'reuse_ratio': 0.0, 'prune_ratio': 0.0})
 
-        prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 保留的
-        reuse_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # 保留的
-        activation_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] # 移除的
+        prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   
+        reuse_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   
+        activation_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] 
 
         if mode == 'shapePipe':
             prune_config_list = [1.0, 0.35, 0.5, 0.45, 0.5, 1.0, 1.0, 1.0]
@@ -224,7 +221,7 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
             elif condition == 'energy':
                 activation_config_list = [0.449669043,0.133944031,0.156383196,0.066301643,0.035558075, 0.209265391,0.181919098,0.142277241]
 
-        if mode == 'SRE':  # 保留的，改成1就行
+        if mode == 'SRE':  
             prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
             if condition == 'latency':
                 activation_config_list = [0.49172327,0.3320634,0.305080436,0.127877681,0.063285873,0.337890625,0.419921875,0.294921875]
@@ -257,9 +254,9 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
         layer_config_list.append({'type': 'relu'})
         layer_config_list.append({'type': 'fc', 'in_features': 2048, 'out_features': 10, 'reuse_ratio': 0.0, 'prune_ratio': 0.0})
 
-        prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]  # 保留的
-        reuse_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]  # 保留的
-        activation_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]  # 移除的
+        prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]  
+        reuse_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        activation_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]  
 
         if mode == 'shapePipe':
             prune_config_list = [1.0, 0.5, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0]
@@ -282,7 +279,7 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
             elif condition == 'energy':
                 activation_config_list = [0.476475343,0.254811264,0.196848913,0.078171897,0.020796094,0.182793935,0.312905312,0.181742668]
 
-        if mode == 'SRE':  # 保留的，改成1就行
+        if mode == 'SRE':
             prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
             if condition == 'latency':
                 activation_config_list = [0.491372191,0.359013845,0.343125925,0.152990939,0.056478828, 0.35546875,0.396484375,0.25]
@@ -343,7 +340,7 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
             elif condition == 'energy':
                 activation_config_list = [0.422358407,0.138114118,0.142785206,0.097993309,0.08940535,0.046757746,0.121861951,0.215984344]
 
-        if mode == 'SRE':  # 保留的，改成1就行
+        if mode == 'SRE':  
             prune_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
             if condition == 'latency':
                 activation_config_list = [0.490655899,0.328275681,0.242111206,0.190559387,0.230377197,0.191131592,0.331054688, 0.251953125]
@@ -400,14 +397,14 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
         reuse_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,1.0]
         activation_config_list = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,1.0]
 
-        if mode == 'shapePipe':  # 保留的，改成1就行
+        if mode == 'shapePipe':  
             prune_config_list = [1,0.6,0.7,0.4,0.6,0.4,0.4,0.6,0.4,0.15,0.15,0.15,0.15,1]  # 2.26
             if condition == 'latency':
                 activation_config_list = [0.36775251,0.267812092,0.200574517,0.127319516,0.225794037,0.12437569,0.029331598,0.205554199,0.127456445,0.185515747,0.286007129,0.205372852,0.13616875,0.4453125]
             elif condition == 'energy':
                 activation_config_list = [0.363166345,0.148384679,0.121122564,0.071883987,0.096186837,0.058416726,0.012865088,0.046325258,0.025768053,0.039229295,0.101616043,0.068516384,0.036730649,0.265857697]
 
-        if mode == 'shape':  # 保留的，改成1就行
+        if mode == 'shape': 
             prune_config_list = [1,0.6,0.7,0.4,0.6,0.4,0.4,0.6,0.4,0.15,0.15,0.15,0.15,1]  # 2.26
             if condition == 'latency':
                 activation_config_list = [0.36775251,0.267812092,0.200574517,0.127319516,0.225794037,0.12437569,0.029331598,0.205554199,0.127456445,0.185515747,0.286007129,0.205372852,0.13616875,0.4453125]
@@ -421,7 +418,7 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
             elif condition == 'energy':
                 activation_config_list = [0.422358407,0.226579683,0.171122051,0.152310502,0.131356741,0.088098522,0.076004293,0.069484733,0.040860786,0.078115678,0.156235578,0.097421621,0.074882486,0.216384888]
 
-        if mode == 'SRE':  # 保留的，改成1就行
+        if mode == 'SRE':  
             prune_config_list = [1 for i in range(14)]
             if condition == 'latency':
                 activation_config_list = [0.490655899,0.343544006,0.290756226,0.234703064,0.23046875,0.141326904,0.118377686,0.241943359,0.202392578,0.26171875,0.349121094,0.265136719,0.232421875,0.3203125]
@@ -513,7 +510,7 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
             elif condition == 'energy':
                 activation_config_list = [0.474194527,0.241285518,0.281529923,0.133467532,0.20608653,0.229398489,0.179889096,0.273577837,0.172555632,0.165154311,0.249156475,0.217527919,0.151993434,0.085051369,0.080707285,0.075148582,0.063432154,0.187733665,0.117119181,0.128815916,0.039531708]
 
-        if mode == 'SRE':  # 保留的，改成1就行
+        if mode == 'SRE':  
             prune_config_list = [1.0 for i in range(21)]
             if condition == 'latency':
                 activation_config_list = [0.490655899,0.370023727,0.333230972,0.328590393,0.454175949,0.342330933,0.305587769,0.467735291,0.27960968,0.498626709,0.326751709,0.326751709,0.335632324,0.255432129,0.50604248,0.308105469,0.305053711,0.506347656,0.182373047,0.267211914,0.34765625]
@@ -544,7 +541,6 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
                 layer_config_list.insert(i+1, {'type': 'bn', 'features': layer_config_list[i]['out_channels']})
                 quantize_config_list.insert(i+1, {'weight_bit': 8, 'activation_bit': 8})
                 input_index_list.insert(i+1, [-1])
-                # conv层后面加了一层bn，所以这一层相对他后面的层的相对层数差要加一
                 for j in range(i + 2, len(layer_config_list), 1):
                     for relative_input_index in range(len(input_index_list[j])):
                         if j + input_index_list[j][relative_input_index] < i + 1:
@@ -556,7 +552,6 @@ def get_net(hardware_config, cate, num_classes, mode,condition):
                 layer_config_list.insert(i + 1, {'type': 'bn', 'features': layer_config_list[i]['out_channels']})
                 quantize_config_list.insert(i + 1, {'weight_bit': 8, 'activation_bit': 8})
                 input_index_list.insert(i + 1, [-1])
-                # conv层后面加了一层bn，所以这一层相对他后面的层的相对层数差要加一
                 for j in range(i + 2, len(layer_config_list), 1):
                     for relative_input_index in range(len(input_index_list[j])):
                         if j + input_index_list[j][relative_input_index] < i + 1:

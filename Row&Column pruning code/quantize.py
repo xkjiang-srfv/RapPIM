@@ -79,21 +79,18 @@ class Round(Function):
         return output
 
     @staticmethod
-    def backward(self, grad_output):  # 跳过伪量化这一层的梯度计算，让梯度直接流到前一层
+    def backward(self, grad_output):  
         grad_input = grad_output.clone()
         return grad_input
 
-# A(特征)量化
 class ActivationQuantizer(nn.Module):
     def __init__(self):
         super(ActivationQuantizer, self).__init__()
 
-    # 取整(ste)
     def round(self, input):
         output = Round.apply(input)
         return output
 
-    # 量化/反量化
     def forward(self, input,bits,r_or_c=None,pattern=None,ratio=None,filter_shape=None,stride=None,padding=None,n_filters=None,batch_size=None,input_shape=None):
         self.bits = bits
         self.ratio = ratio
@@ -121,7 +118,7 @@ class ActivationQuantizer(nn.Module):
                 # print(torch.sum(addone),torch.sum(addone)-torch.sum(addone_1))
                 if self.ratio != 0:
                     self.X_col = self.activationSlidePrune(self.X_col, self.ratio,r_or_c)
-                self.X_col = scale * self.X_col  # 再反量化回float32
+                self.X_col = scale * self.X_col  
                 return self.X_col
             else:
                 output = output*scale
@@ -153,17 +150,14 @@ class ActivationQuantizer(nn.Module):
             print(i,andSum[i])
 
     def activationSlidePrune(self,input,ratio,r_or_c):
-        matrixOne = torch.ones(input.shape,device='cuda:0')  # 设置一个全1矩阵
+        matrixOne = torch.ones(input.shape,device='cuda:0')  
         # x = copy.deepcopy(input)
         x = torch.clone(torch.detach(input))
-        andOp = torch.logical_and(matrixOne,x)  # 进行与操作
-        # 行剪枝
-
-
+        andOp = torch.logical_and(matrixOne,x) 
 
         if r_or_c == 1:
 
-            andSum_row = torch.sum(andOp,dim=1)  # 每行的数据进行一个相加
+            andSum_row = torch.sum(andOp,dim=1)  
             list_queue = torch.sort(andSum_row)
             num = torch.floor(torch.tensor(len(list_queue.values)*ratio[0]))
             r = list_queue.values[int(num)]
@@ -171,24 +165,12 @@ class ActivationQuantizer(nn.Module):
             pruneTensor_row[(andSum_row < r),] = 1
             aaaa = torch.sum(pruneTensor_row)
             oneCal(input)
-            # print("只剪行:", aaaa)
-            # t_i = 0
-            # l_t = []
-            # while t_i+512 < len(pruneTensor_row):
-            #     l_t.append(sum(pruneTensor_row[t_i:t_i+512]))
-            #     t_i += 512
-            # l_t.append(sum(pruneTensor_row[t_i:len(pruneTensor_row)]))
-            # print(l_t)
             input[(andSum_row < r),] = 0
             oneCal(input)
 
 
-            #以上进行行剪枝
         elif r_or_c == 2:
-            #列剪枝
-
-            # print('执行列剪枝，ratio=', ratio)
-            andSum_column = torch.sum(andOp, dim=0)  # 每列的数据进行一个相加
+            andSum_column = torch.sum(andOp, dim=0) 
             # q = (sum(andSum_column) // len(andSum_column)) * ratio
             list_queue = torch.sort(andSum_column)
             num = torch.ceil(torch.tensor(len(list_queue.values)*ratio[1]))
@@ -197,12 +179,9 @@ class ActivationQuantizer(nn.Module):
             pruneTensor_row[(andSum_column < r),] = 1
             aaaa = torch.sum(pruneTensor_row)
             oneCal(input)
-            # print("只剪列:", aaaa // 32)
             input[:,(andSum_column < r)] = 0
             oneCal(input)
-            # 以上进行列剪枝
         else:
-            # print('执行行列剪枝，ratio=', ratio)
             andSum_row = torch.sum(andOp, dim=1)
             andSum_column = torch.sum(andOp, dim=0)
 
@@ -228,35 +207,17 @@ class ActivationQuantizer(nn.Module):
             input[:, (andSum_column < r2)] = 0
 
             oneCal(input)
-            # print("剪的行:", aaaa1)
-            # t_i = 0
-            # l_t = []
-            # while t_i + 512 < len(pruneTensor_row):
-            #     l_t.append(sum(pruneTensor_row[t_i:t_i + 512]))
-            #     t_i += 512
-            # l_t.append(sum(pruneTensor_row[t_i:len(pruneTensor_row)]))
-            # print(l_t)
-            # print("剪的列:", aaaa2 // 32)
-
-
-        # lens = len(zeroTensor)
-        # zeroRatio = (sum(zeroTensor), float(sum(zeroTensor)) / lens)
-        # pruneRatio = (sum(pruneTensor) - sum(zeroTensor), float(sum(pruneTensor) - sum(zeroTensor)) / lens)
-        # input[(andSum_row<=p),] = 0
 
         return input
 
-# W(权重)量化
 class WeightQuantizer(nn.Module):
     def __init__(self):
         super(WeightQuantizer, self).__init__()
 
-    # 取整(ste)
     def round(self, input):
         output = Round.apply(input)
         return output
 
-    # 量化/反量化
     def forward(self, input,bits):
         self.bits = bits
         if self.bits == 32:
@@ -269,6 +230,6 @@ class WeightQuantizer(nn.Module):
             min_val,max_val = min_val.item(),max_val.item()
             scale = (max_val-min_val)/(2**self.bits - 1)
             output = self.round(input/scale)
-            output = scale*output   # 先全部量化成8位
+            output = scale*output   
             # output = input
         return output

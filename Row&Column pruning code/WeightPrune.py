@@ -54,24 +54,24 @@ class PatternPruningMethod(prune.BasePruningMethod):
         prune.BasePruningMethod.__init__(self)
 
     def compute_mask(self, t, default_mask):
-        mask = default_mask.clone()  # 复制一个mask大小等于当前层的filter
+        mask = default_mask.clone() 
         if self.pruning_type == 'conv':
             scps = np.zeros(
-                self.clusters_num * default_mask.shape[-1] * default_mask.shape[-1])  # 复制num个scp,表示每一个卷积族的pattern
+                self.clusters_num * default_mask.shape[-1] * default_mask.shape[-1])  
             scps.resize(self.clusters_num, default_mask.shape[-1], default_mask.shape[-1])
 
-            clusters = getCluster(t, self.clusters_num)  # 输入当前层的filter，获得其聚类信息
+            clusters = getCluster(t, self.clusters_num)  
 
             print(clusters)
 
-            for i in np.arange(0, clusters.shape[0]):  # 遍历所有kernel,计算所有cluster的scp
+            for i in np.arange(0, clusters.shape[0]):  
                 for j in np.arange(0, clusters.shape[1]):
                     scp_upgrade(t[i][j], scps[clusters[i][j]])
 
-            scp_binaeryzation(scps, self.cut_num)  # 根据scp二值化获得真正的pattern
+            scp_binaeryzation(scps, self.cut_num) 
             print(scps)
 
-            for i in np.arange(0, clusters.shape[0]):  # 根据scp和每个kernel的族编号得到最终的mask
+            for i in np.arange(0, clusters.shape[0]):  
                 for j in np.arange(0, clusters.shape[1]):
                     mask[i][j] = torch.from_numpy(scps[clusters[i][j]])
 
@@ -87,10 +87,10 @@ class PatternPruningMethod(prune.BasePruningMethod):
             for i in np.arange(0, clusters.shape[0]):
                 scp_upgrade(t[i], scps[int(clusters[i])])
 
-            scp_binaeryzation(scps, self.cut_num)  # 根据scp二值化获得真正的pattern
+            scp_binaeryzation(scps, self.cut_num)  
             print(scps)
 
-            for i in np.arange(0, clusters.shape[0]):  # 根据scp和每个kernel的族编号得到最终的mask
+            for i in np.arange(0, clusters.shape[0]):  
                 mask[i] = torch.from_numpy(scps[int(clusters[i])])
 
         return mask
@@ -99,18 +99,6 @@ def weightPrune(model_name, ratio, weightPrameter, LinearPrameter, inplace=False
     def activationWeightPruneOp(module):
         for name, child in module.named_children():
             if isinstance(child, nn.Conv2d):
-                # print(child)
-                # print(child.weight.shape)
-                # print('custers_num=6', 'cut_num=', child.weight.shape[-1] * child.weight.shape[-2] / weightPrameter,
-                #       'pruning_type=conv')
-                # convPruning = PatternPruningMethod(custers_num=6,
-                #                                    cut_num=child.weight.shape[-1] * child.weight.shape[
-                #                                        -2] / weightPrameter,
-                #                                    pruning_type='conv')
-                # convPruning.apply(child, 'weight', 6, child.weight.shape[-1] * child.weight.shape[-2] / weightPrameter,
-                #                   'conv')
-
-                # 针对输入特征图添加剪枝操作
                 activationWeightPruneConv = Conv2dTest(
                     ratio,
                     child.in_channels,
@@ -134,7 +122,6 @@ def weightPrune(model_name, ratio, weightPrameter, LinearPrameter, inplace=False
                                                    pruning_type='conv')
                 convPruning.apply(activationWeightPruneConv, 'weight', 6, activationWeightPruneConv.weight.shape[-1] * activationWeightPruneConv.weight.shape[-2] / weightPrameter,
                                   'conv')
-                # activationWeightPruneConv._buffers['weight_mask'] = child.weight_mask
 
                 activationWeightPruneConv._forward_pre_hooks
 
@@ -147,63 +134,17 @@ def weightPrune(model_name, ratio, weightPrameter, LinearPrameter, inplace=False
                 fullPruning.apply(child, 'weight', 8, child.weight.shape[-1] / LinearPrameter, 'full')
                 child._forward_pre_hooks
             else:
-                activationWeightPruneOp(child)  # 这是用来迭代的，Maxpool层的功能是不变的
+                activationWeightPruneOp(child) 
 
     if not inplace:
         model = copy.deepcopy(model_name)
-    activationWeightPruneOp(model_name)  # 为每一层添加量化操作
+    activationWeightPruneOp(model_name) 
     return model_name
-# def weightPrune(model_name, ratio, weightPrameter, LinearPrameter, inplace=False):
-#     def activationWeightPruneOp(module):
-#         for name, child in module.named_children():
-#             if isinstance(child, nn.Conv2d):
-#                 print(child)
-#                 print(child.weight.shape)
-#                 print('custers_num=6', 'cut_num=', child.weight.shape[-1] * child.weight.shape[-2] / weightPrameter,
-#                       'pruning_type=conv')
-#                 convPruning = PatternPruningMethod(custers_num=6,
-#                                                    cut_num=child.weight.shape[-1] * child.weight.shape[
-#                                                        -2] / weightPrameter,
-#                                                    pruning_type='conv')
-#                 convPruning.apply(child, 'weight', 6, child.weight.shape[-1] * child.weight.shape[-2] / weightPrameter,
-#                                   'conv')
-#
-#                 # 针对输入特征图添加剪枝操作
-#                 activationWeightPruneConv = Conv2dTest(
-#                     ratio,
-#                     child.in_channels,
-#                     child.out_channels, child.kernel_size, stride=child.stride, padding=child.padding,
-#                     dilation=child.dilation, groups=child.groups, bias=(child.bias is not None),
-#                     padding_mode=child.padding_mode
-#                 )
-#                 if child.bias is not None:
-#                     activationWeightPruneConv.bias = child.bias
-#                 activationWeightPruneConv.weight = Parameter(child.weight)
-#                 activationWeightPruneConv._buffers['weight_mask'] = child.weight_mask
-#                 module._modules[name] = activationWeightPruneConv
-#                 activationWeightPruneConv._forward_pre_hooks
-#
-#             elif isinstance(child, nn.Linear):
-#                 print(child)
-#                 print(child.weight.shape)
-#                 print('custers_num=4', 'cut_num=', child.weight.shape[-1] / LinearPrameter, 'pruning_type=full')
-#                 fullPruning = PatternPruningMethod(custers_num=8, cut_num=child.weight.shape[-1] / LinearPrameter,
-#                                                    pruning_type='full')
-#                 fullPruning.apply(child, 'weight', 8, child.weight.shape[-1] / LinearPrameter, 'full')
-#                 child._forward_pre_hooks
-#             else:
-#                 activationWeightPruneOp(child)  # 这是用来迭代的，Maxpool层的功能是不变的
-#
-#     if not inplace:
-#         model = copy.deepcopy(model_name)
-#     activationWeightPruneOp(model_name)  # 为每一层添加量化操作
-#     return model_name
 
 def weightPruneUnstructure(model_name,ratio,weightPrameter,LinearPrameter,inplace=False):
     def activationWeightPruneOp(module):
         for name, child in module.named_children():
             if isinstance(child, nn.Conv2d):
-                # 针对输入特征图添加剪枝操作
                 prune.random_unstructured(child, name="weight", amount=(1/weightPrameter))
                 activationWeightPruneConv = Conv2dTest(
                     ratio,
@@ -223,15 +164,15 @@ def weightPruneUnstructure(model_name,ratio,weightPrameter,LinearPrameter,inplac
                 prune.random_unstructured(child, name="weight", amount=(1/LinearPrameter))
                 child._forward_pre_hooks
             else:
-                activationWeightPruneOp(child)  # 这是用来迭代的，Maxpool层的功能是不变的
+                activationWeightPruneOp(child)  
     if not inplace:
         model = copy.deepcopy(model_name)
-    activationWeightPruneOp( model_name)  # 为每一层添加量化操作
+    activationWeightPruneOp( model_name)  
     return model
 
 def getModel(modelName):
     if modelName == 'LeNet':
-        return getLeNet()  # 加载原始模型框架
+        return getLeNet()  
     elif modelName == 'AlexNet':
         return getAlexnet()
     elif modelName == 'VGG16':
@@ -244,28 +185,28 @@ def getModel(modelName):
 def getDataSet(modelName,batchSize,imgSize):
     if modelName == 'VGG16' or modelName == 'AlexNet' or modelName == 'ResNet' or modelName == 'SqueezeNet':
         dataloaders, dataset_sizes = load_cifar10(batch_size=batchSize, pth_path='./data',
-                                                  img_size=imgSize)  # 确定数据集
+                                                  img_size=imgSize)  
     elif modelName == 'LeNet':
         dataloaders, dataset_sizes = load_mnist(batch_size=batchSize, path='./data', img_size=imgSize)
 
     return dataloaders,dataset_sizes
 
 def weightPruneModelOp(model_name,batch_size,img_size,ratio,pattern,epoch,weightParameter,LinearParameter,quantize,quantize_bit,operation = None):
-    net = getModel(model_name)  # 得到模型具体结构
-    dataloaders, dataset_sizes = getDataSet(model_name,batch_size,img_size)  # 读取数据集
+    net = getModel(model_name)  
+    dataloaders, dataset_sizes = getDataSet(model_name,batch_size,img_size)  
     criterion = nn.CrossEntropyLoss()
     if pattern == 'retrain' or pattern == 'train' or pattern == 'DPTrain':
         if pattern == 'retrain':
             if operation == 'activationRetrainAfterWeightRetrain':
                 getPth = '../../hdd/hdd_o/pth/' + model_name + '/ratio=0'  + '/Weight' + '/best.pth'
             else:
-                getPth = '../../hdd/hdd_o/pth/' + model_name  + '/ratio=' +str(ratio)+ '/Activation' + '/best.pth'  #读取经过输入特征图剪枝训练后的权重模型
+                getPth = '../../hdd/hdd_o/pth/' + model_name  + '/ratio=' +str(ratio)+ '/Activation' + '/best.pth'  
         else:
             getPth = '../../hdd/hdd_o/pth/' + model_name  + '/ratio=0' + '/Activation' + '/best.pth'
         optimizer = optim.SGD(net.parameters(), lr=0.1, momentum=0.9)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.8)  # 设置学习率下降策略
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.8)  
         if operation != 'activationRetrainAfterWeightRetrain':
-            net.load_state_dict(torch.load(getPth))  # AlexNet注释1
+            net.load_state_dict(torch.load(getPth)) 
             # net = torch.load(getPth)
             if pattern != 'DPTrain':
                 weightPrune(net, ratio ,weightParameter,LinearParameter)

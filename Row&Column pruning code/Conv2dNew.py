@@ -134,7 +134,7 @@ class Execution(Layer):
         self.bias = bias
         self.stride = stride
         self.padding = padding
-        self.n_filters = self.weight.shape[0]  # 卷积核的个数
+        self.n_filters = self.weight.shape[0]  
         self.filter_shape = (self.weight.shape[2], self.weight.shape[3])
         self.input_shape = [self.input.shape[1],self.input.shape[2],self.input.shape[3]]
         self.trainable = False
@@ -150,7 +150,6 @@ class Execution(Layer):
             self.X_col = self.activation_quantizer(self.input, self.input_quant,self.r_or_c,'Conv',self.ratio,self.filter_shape,self.stride,self.padding,self.n_filters,batch_size,self.input_shape)
             # self.input = self.activation_quantizer(self.input,bits=self.input_quant,self.ratio,self.filter_shape,self.stride,self.padding)
             self.W_col = self.weight.reshape((self.n_filters, -1))
-            print('权重激活行',self.X_col.shape[1]//2,'激活列', self.X_col.shape[0],'权重行',self.W_col.shape[1],'权重列',self.W_col.shape[0],)
             # Calculate output
             if self.bias is not None:
                 output = torch.einsum('ij,jk->ik', self.W_col, self.X_col) + (torch.unsqueeze(self.bias, 1))
@@ -190,19 +189,17 @@ class Execution(Layer):
                 zerosNumber += 1
             if andSum[i] != 0 and andSum[i] <= compareRatio:
                 pruneNumber += 1
-        print('pruneNumberRatio=', pruneNumber / (input.shape[0]))
-        print('zerosNumberRatio=', zerosNumber / (input.shape[0]))
 
     def accuracyTest(self,andSum):
         for i in range(len(andSum)):
             print(i,andSum[i])
 
     def activationSlidePrune(self,input,ratio):
-        matrixOne = torch.ones(input.shape,device='cuda:0')  # 设置一个全1矩阵
+        matrixOne = torch.ones(input.shape,device='cuda:0')  
         # x = copy.deepcopy(input)
         x = torch.clone(torch.detach(input))
-        andOp = torch.logical_and(matrixOne,x)  # 进行与操作
-        andSum = torch.sum(andOp,dim=1)  # 每行的数据进行一个相加
+        andOp = torch.logical_and(matrixOne,x)
+        andSum = torch.sum(andOp,dim=1)  
         # self.accuracyTest(andSum)
         p = (sum(andSum) // len(andSum))*ratio
         # self.compressionRateStatistics(input, andSum, p)

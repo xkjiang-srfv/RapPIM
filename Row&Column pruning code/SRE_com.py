@@ -24,12 +24,6 @@ def oneCalRow(input,pruneTensor=None):
     input = [*map(bin,input)]
     q = "".join(input)
     s1 = q.count("1")
-    # s1 = float(sum(ones))
-    # ones[(pruneTensor==0),] = 0
-    # s2 = float(sum(ones))  # 剪掉的
-    # s3 = s1 - s2  #剩余的
-    print("SRE（行）操作时，本层一共有{}个1，占全部位数的{}".format(s1,s1/(len(input)*len(input[0])*8)))
-    # print("剪行时，该行一共有{}个1，剪掉了{}个,剩余{}个,剪掉的比例为{}".format(s1,s2,s3,(s2/s1)))
 
 def oneCalColumn(input,pruneTensor):
     input = input.T
@@ -47,11 +41,7 @@ def oneCalColumn(input,pruneTensor):
     input = [*map(bin, input)]
     q = "".join(input)
     s1 = q.count("1")
-    # ones[(pruneTensor == 0),] = 0
-    # s2 = float(sum(ones))  # 剪掉的
-    # s3 = s1 - s2  # 剩余的
-    print("SRE（列）时，本层一共有{}个1，占全部位数的{}".format(s1,s1/(len(input)*len(input[0])*8)))
-    # print("剪列时，该列一共有{}个1，剪掉了{}个,剩余{}个,剪掉的比例为{}".format(s1, s2, s3, (s2 / s1)))
+
 
 def oneCal(input):
     a1 = torch.sum(input)
@@ -66,5 +56,4 @@ def oneCal(input):
     input = [*map(bin, input)]
     q = "".join(input)
     s1 = q.count("1")
-    print("SRE操作时，本层一共有{}个1".format(s1))
 

@@ -285,7 +285,7 @@ class Model_latency:
 
     def calculate_model_latency(self, mode,condition):
         # fill in input data kernel size by kernel size (column direction)
-        for layer_id in range(len(self.graph.net)):  # 这个地方能不能直接以graph替代NetStructure
+        for layer_id in range(len(self.graph.net)):  
             layer_dict = self.graph.net[layer_id][0][0]
             if layer_id == 0:
                 self.layer_latency_initial()
@@ -299,10 +299,9 @@ class Model_latency:
 
                 read_column = math.ceil(self.graph.layer_tileinfo[layer_id]['max_column'] * (1 - layer_dict['reuse_ratio']))
                 OU_row = math.ceil(int(self.graph.layer_tileinfo[layer_id]['max_row'] / self.OU_size[0]) * (1 - layer_dict['prune_ratio']))
-                # 指定Tile工作一次joint_module/transfer/tile_out_buf write的延时
                 temp_tile_latency = tile_latency_analysis(SimConfig_path=self.SimConfig_path, max_row=self.graph.layer_tileinfo[layer_id]['max_row'], max_column=self.graph.layer_tileinfo[layer_id]['max_column'], inprecision=inputbit, PE_num=self.graph.layer_tileinfo[layer_id]['max_PE'], default_outbuf_size_tile=self.graph.net[layer_id][0][0]['xk_outbuf_tile'], default_inbuf_size_pe=self.graph.net[layer_id][0][0]['xk_inbuf_pe'], default_outbuf_size_pe=self.graph.net[layer_id][0][0]['xk_outbuf_pe'],mode=mode,layerType=layer_dict['type'],condition=condition)
                 temp_tile_latency.outbuf_tile.calculate_buf_read_latency(rdata=self.graph.net[layer_id][0][0]['Outputchannel']/8/self.graph.net[layer_id][0][0]['tile_number']*8)
-                temp_tile_latency.tile_buf_rlatency = temp_tile_latency.outbuf_tile.buf_rlatency  # 指定Tile内部outbuf读一次的延时，都出来给不同的PE_inbuf
+                temp_tile_latency.tile_buf_rlatency = temp_tile_latency.outbuf_tile.buf_rlatency  
                 temp_tile_latency.tile_buf_wlatency = temp_tile_latency.tile_buf_rlatency
 
                 merge_time = temp_tile_latency.tile_buf_rlatency + temp_tile_latency.digital_period + math.ceil(self.graph.layer_tileinfo[layer_id]['max_column'] / temp_tile_latency.OU_size[1]) * self.graph.layer_tileinfo[layer_id]['max_PE'] * outputbit / self.inter_tile_bandwidth
@@ -312,7 +311,7 @@ class Model_latency:
                     for j in range(int(output_size[1] / layer_dict['Multiple'])):
                         self.pre_max_time = max_time
                         # indata = kernelsize*kernelsize * inputbit / 8
-                        indata = temp_tile_latency.OU_size[0] * inputbit / 8  # 最终到达PE读取出多少数据就读入多少数据的效果
+                        indata = temp_tile_latency.OU_size[0] * inputbit / 8  
                         rdata = temp_tile_latency.OU_size[0] * inputbit / 8
                         wdata = outputbit / 8
                         temp_tile_latency.update_tile_latency(OU_row, read_column, indata, rdata, wdata, mode, self.graph.net[layer_id][0][0]['activation_ratio'],layerType=layer_dict['type'],condition=condition)
@@ -348,7 +347,7 @@ class Model_latency:
                                                                   'xk_outbuf_pe'],
                                                               mode=layer_dict['mode'],layerType=layer_dict['type'],condition=condition)
                     temp_tile_latency.outbuf_tile.calculate_buf_read_latency(rdata=self.graph.net[layer_id][0][0]['Outputchannel'] / 8 / self.graph.net[layer_id][0][0]['tile_number']*8)
-                    temp_tile_latency.tile_buf_rlatency = temp_tile_latency.outbuf_tile.buf_rlatency  # 指定Tile内部outbuf读一次的延时，都出来给不同的PE_inbuf
+                    temp_tile_latency.tile_buf_rlatency = temp_tile_latency.outbuf_tile.buf_rlatency 
                     temp_tile_latency.tile_buf_wlatency = temp_tile_latency.tile_buf_rlatency
                     merge_time = temp_tile_latency.tile_buf_rlatency + temp_tile_latency.digital_period + math.ceil(self.graph.layer_tileinfo[layer_id]['max_column'] / temp_tile_latency.OU_size[1]) * self.graph.layer_tileinfo[layer_id]['max_PE'] * outputbit / self.inter_tile_bandwidth
                     transfer_time = int(outputchannel * outputbit / self.inter_tile_bandwidth / self.graph.layer_tileinfo[layer_id]['tilenum'])
@@ -357,10 +356,10 @@ class Model_latency:
                     for i in range(int(output_size[0] / layer_dict['Multiple'])):
                         for j in range(int(output_size[1] / layer_dict['Multiple'])):
                             self.pre_max_time = max_time
-                            # indata = kernelsize * kernelsize* inputbit / 8          # PE_inbuf单次写入的数据,kernel_size*kernel_size*inputbit/8,单位byte
+                            # indata = kernelsize * kernelsize* inputbit / 8         
                             indata = temp_tile_latency.OU_size[0] * inputbit / 8
-                            rdata = temp_tile_latency.OU_size[0] * inputbit / 8     # PE_inbuf单次读出的数据,OU_size[0]*位数/8,单位byte
-                            wdata = outputbit / 8                                   # PE_outbuf单次写入的数据,单次写入1byte数据
+                            rdata = temp_tile_latency.OU_size[0] * inputbit / 8     
+                            wdata = outputbit / 8                                  
                             temp_tile_latency.update_tile_latency(OU_row, read_column, indata, rdata, wdata, mode, self.graph.net[layer_id][0][0]['activation_ratio'],layerType=layer_dict['type'],condition=condition)
 
                             temp_Inputindex = self.graph.layer_tileinfo[layer_id]['Inputindex']
@@ -398,12 +397,12 @@ class Model_latency:
                                                               default_outbuf_size_pe=self.graph.net[layer_id][0][0][
                                                                   'xk_outbuf_pe'],mode=layer_dict['mode'],layerType=layer_dict['type'])
                         temp_tile_latency.outbuf_tile.calculate_buf_read_latency(rdata=self.graph.net[layer_id][0][0]['Outputchannel'] / 8 / self.graph.net[layer_id][0][0]['tile_number']*8)
-                        temp_tile_latency.tile_buf_rlatency = temp_tile_latency.outbuf_tile.buf_rlatency  # 指定Tile内部outbuf读一次的延时，都出来给不同的PE_inbuf
+                        temp_tile_latency.tile_buf_rlatency = temp_tile_latency.outbuf_tile.buf_rlatency  
                         temp_tile_latency.tile_buf_wlatency = temp_tile_latency.tile_buf_rlatency
                         merge_time = temp_tile_latency.tile_buf_rlatency + temp_tile_latency.digital_period + math.ceil(self.graph.layer_tileinfo[layer_id]['max_column'] / temp_tile_latency.OU_size[1]) * self.graph.layer_tileinfo[layer_id]['max_PE'] * outputbit / self.inter_tile_bandwidth
                         transfer_time = int(output_size * outputbit / self.inter_tile_bandwidth / self.graph.layer_tileinfo[layer_id]['tilenum'])
 
-                        # indata = self.graph.layer_tileinfo[layer_id]['max_row'] * inputbit / 8    # FC只需要乘加一次,不需要滑窗
+                        # indata = self.graph.layer_tileinfo[layer_id]['max_row'] * inputbit / 8  
                         indata = temp_tile_latency.OU_size[0] * inputbit / 8
                         rdata = temp_tile_latency.OU_size[0] * inputbit / 8  # OU-based Crossbar
                         wdata = outputbit / 8
@@ -442,8 +441,8 @@ class Model_latency:
                         self.pre_max_time = 0
                         for i in range(int(output_size[0] / layer_dict['Multiple'])):
                             for j in range(int(output_size[1] / layer_dict['Multiple'])):
-                                indata = inputchannel * kernelsize * kernelsize * inputbit / 8  # PE_inbuf单次写入的数据,kernel_size*kernel_size*inputbit/8,单位byte
-                                rdata = inputchannel * kernelsize ** 2 * inputbit / 8  # PE_inbuf单次读出的数据,OU_size[0]*位数/8,单位byte
+                                indata = inputchannel * kernelsize * kernelsize * inputbit / 8  
+                                rdata = inputchannel * kernelsize ** 2 * inputbit / 8  
                                 temp_pooling_latency.update_pooling_latency(indata=indata, rdata=rdata)
                                 temp_Inputindex = self.graph.layer_tileinfo[layer_id]['Inputindex']
                                 max_prelayer_time = 0
@@ -525,67 +524,40 @@ class Model_latency:
             self.total_tile_merge_latency.append(sum(self.tile_merge_latency[layer_id]))
             self.total_tile_transfer_latency.append(sum(self.tile_transfer_latency[layer_id]))
 
-# 假设单独为行列剪枝在Tile的joint_module中添加了一个buffer，用来存储计算剪枝标志位时的数据，此时，
-#   OlyRCP模式下，需要outbuf_pe工作两次，一次向outbuf_tile中写入全精度数据，一次向joint_module_buf中写入全精度数据
-#       joint_module_buf读取全部数据用于行列剪枝标志位的计算
-#       每个crossbar的需要由jointmodule向ARMT需要写入
-#       每个crossbar工作前需要从ARMT中读取出该值
-#       jointmodule->img2col
-#       jointmodule->adder
-#       jointmodule->division
-#       jointmodule->comparer
 
-#   shape模式下，需要outbuf_pe工作两次，一次向joint_module_buf中写入高位计算结果，以供计算行列剪枝标志位；一次向outbuf_tile中写入全精度结果
-#       你可能会疑问，那shape模式下高位计算数据（虽然是高位计算结果，但也是8bit）存在哪，我是将其存在oReg中的，因此在PE中，oReg写入次数要乘2，同时adder/shift工作次数也要增加（这个地方已经考虑到了，体现在activation位数中了），
-#       joint_module_buf读取全部数据用于行列剪枝标志位的计算
-#       每个crossbar的ARMT需要写入
-#       每个crossbar的LAMT，则在crossbar内部，根据高位计算的结果自己写入,不同的crossbar并行写入该数值
-#       jointmodule->img2col
-#       jointmodule->adder
-#       jointmodule->division
-#       jointmodule->comparer
 def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
-    # 这里主要是每一层的joint_module中做的事情，主要是生成ARMT，并写入到不同crossbar中去
     PE_config = cp.ConfigParser()
     PE_config.read("../SimConfig.ini", encoding='UTF-8')
     digital_period = 1 / float(PE_config.get('Digital module', 'Digital_Frequency')) * 1e3
     layerNum = 0
     adderNum = 16
     if(mode == 'onlyRCP'):
-        # 由于不用计算高位数据，因此在PE层面，不用添加任何的事情
         for layer_id in range(len(graph.net)):
             layer_dict = graph.net[layer_id][0][0]
             if layer_dict['type'] == 'conv':
-                # 除了最后一层，都需要执行行列剪枝，利用本层的计算结果进行Img2col，统计每行每列中零值数量并进行剪枝
-                if(layerNum < len(RCPruneflag[model_name])-1):
-                    # 需要将高位数据或者全精度数据是否大于零或小于等于0的标志位写到joint_module中，jointmodule内部再生成LAMT和ARMT，并再写回crossbar中，在crossbar中再读取出ARMT和LAMT指导工作，该部分应该在Tile部分写入，本代码中在此处更新
-                    RCPBitMap = layer_dict['Outputchannel']*layer_dict['Outputsize'][0]*layer_dict['Outputsize'][0]  # 本层输出数据大小
-                    RCPBitMap_comlatency = RCPBitMap*digital_period / layer_dict['tile_number'] # 首先有个比较器，挨个比较当前计算出来的值与0的大小,不同Tile间是并行执行的
-                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] # 用一个寄存器暂存下所有的标志位
-                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] # 从这个寄存器中读出来写入到jointmodule的buffer中去
+                 if(layerNum < len(RCPruneflag[model_name])-1):
+                    RCPBitMap = layer_dict['Outputchannel']*layer_dict['Outputsize'][0]*layer_dict['Outputsize'][0]  
+                    RCPBitMap_comlatency = RCPBitMap*digital_period / layer_dict['tile_number'] 
+                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] 
+                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] 
 
-                    # 从buf_pe向joint_module中的buf写入全精度数据，这里的数据应该是标志位，即当前全精度值是否为0，然后读取出来
                     Tilelatency = buffer()
                     Tilelatency.calculate_buf_read_latency(layer_dict['Outputchannel'] * layer_dict['Outputsize'][0] * layer_dict['Outputsize'][1] / 8)
                     Tilelatency.calculate_buf_write_latency(layer_dict['Outputchannel'] * layer_dict['Outputsize'][0] * layer_dict['Outputsize'][1] / 8)
 
-                    # 从joint_module中的buf中读取出来后执行Img2col操作，转换成下一层activation矩阵形状
                     Img2colLatency = activationDivision[model_name][layerNum+1][0] * activationDivision[model_name][layerNum+1][1]* digital_period
-
-                    # 计算每一行/列中零值的数量,假设放置16个adder
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * 2 * digital_period   # digital_period是16位的adder的工作延迟，这里的adder不用16位，2位就够了
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period    # 如果是行剪枝的话，就要这一行中0值数量
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * 2 * digital_period   
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period    
                     else:
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period   # 如果是列剪枝的话，就要统计一列中0值的数量
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period   
 
-                    # 计算完每行中、每列中零值数量后，要进行一个排序操作，假设使用快排，时间复杂度为O(nlogn)
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         sumRC = activationDivision[model_name][layerNum + 1][0]+activationDivision[model_name][layerNum + 1][1]
                         if sumRC!=0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         sumRC = activationDivision[model_name][layerNum + 1][0]
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
@@ -594,47 +566,40 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
 
-                    # 排完序后，找到指定的剪枝阈值处的数据标签，找到阈值数据，然后进行比较
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         CompareLatency = (activationDivision[model_name][layerNum + 1][0]+activationDivision[model_name][layerNum + 1][1])*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         CompareLatency = activationDivision[model_name][layerNum + 1][0]*digital_period
                     else:
                         CompareLatency = activationDivision[model_name][layerNum + 1][1]*digital_period
 
-                    # 得到ARMT，并写入不同的crossbar中，写入时间，与下一层的行数或列数有关，如果是剪行的话，就是行数，如果是剪列的话，就是列数，且写的是标志位
-                    if RCPruneflag[model_name][layerNum+1] == 3:  # 如果是行列剪枝的话，则行数、列数均需要存储
+                    if RCPruneflag[model_name][layerNum+1] == 3:  
                         ARMT_wlatency = (activationDivision[model_name][layerNum+1][0] + activationDivision[model_name][layerNum+1][1])/8*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1: # 列剪枝或者行剪枝，那就只需要保存行数或者列数就好了
+                    elif RCPruneflag[model_name][layerNum+1] == 1: 
                         ARMT_wlatency = activationDivision[model_name][layerNum + 1][0]/8 * digital_period
                     else:
                         ARMT_wlatency = activationDivision[model_name][layerNum + 1][1] / 8 * digital_period
                     model_latency = model_latency +RCPBitMap_comlatency+RCPBitMap_wlatency +RCPBitMap_rlatency+Tilelatency.buf_rlatency + Tilelatency.buf_wlatency+Img2colLatency+AdderLatency+sortLatency+CompareLatency+ARMT_wlatency
-                # 第一层除了要预测下一层的参数外，需要特殊处理下，他也是需要进行行列剪枝的，还是得由ReRAM执行
                 if(layerNum == 0):
-                    # 需要将高位数据或者全精度数据是否大于零或小于等于0的标志位写到joint_module中，jointmodule内部再生成LAMT和ARMT，并再写回crossbar中，在crossbar中再读取出ARMT和LAMT指导工作，该部分应该在Tile部分写入，本代码中在此处更新
-                    # 根据本层参数执行img2col
                     Img2colLatency = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]* digital_period
 
-                    RCPBitMap = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]  # 本层输入activation matrix大小
-                    RCPBitMap_comlatency = RCPBitMap*digital_period  # 首先有个比较器，挨个比较当前计算出来的值与0的大小,不同Tile间是并行执行的
-                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8  # 用一个寄存器暂存下所有的标志位
-                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8  # 从寄存器中读取标志位
+                    RCPBitMap = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]  
+                    RCPBitMap_comlatency = RCPBitMap*digital_period 
+                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8 
+                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8 
 
-                    # 计算每一行/列中零值的数量
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * 2 * digital_period  # digital_period是16位的adder的工作延迟，这里的adder不用16位，2位就够了
-                    elif RCPruneflag[model_name][layerNum] == 1:  # 行剪枝
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period    # 如果是行剪枝的话，就要这一行中0值数量
+                    if RCPruneflag[model_name][layerNum] == 3: 
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * 2 * digital_period  
+                    elif RCPruneflag[model_name][layerNum] == 1:  
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   
                     else:
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   # 如果是列剪枝的话，就要统计一列中0值的数量
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   
 
-                    # 计算完每行中、每列中零值数量后，要进行一个排序操作，假设使用快排，时间复杂度为O(nlogn)
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum] == 3: 
                         sumRC = activationDivision[model_name][layerNum][0]+activationDivision[model_name][layerNum][1]
                         if sumRC!=0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
-                    elif RCPruneflag[model_name][layerNum] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum] == 1:  
                         sumRC = activationDivision[model_name][layerNum][0]
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
@@ -643,18 +608,16 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
 
-                    # 排完序后，找到指定的剪枝阈值处的数据标签，找到阈值数据，然后进行比较
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum] == 3: 
                         CompareLatency = (activationDivision[model_name][layerNum][0]+activationDivision[model_name][layerNum][1])*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         CompareLatency = activationDivision[model_name][layerNum][0]*digital_period
                     else:
                         CompareLatency = activationDivision[model_name][layerNum][1]*digital_period
 
-                    # 得到ARMT，并写入不同的crossbar中，写入时间，与下一层的行数或列数有关，如果是剪行的话，就是行数，如果是剪列的话，就是列数，且写的是标志位
-                    if RCPruneflag[model_name][layerNum+1] == 3:  # 如果是行列剪枝的话，则行数、列数均需要存储
+                    if RCPruneflag[model_name][layerNum+1] == 3:  
                         ARMT_wlatency = (activationDivision[model_name][layerNum][0] + activationDivision[model_name][layerNum][1])/8*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1: # 行剪枝，只需要保存行数
+                    elif RCPruneflag[model_name][layerNum+1] == 1: 
                         ARMT_wlatency = activationDivision[model_name][layerNum][0]/8 * digital_period
                     else:
                         ARMT_wlatency = activationDivision[model_name][layerNum][1] / 8 * digital_period
@@ -667,34 +630,28 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
             layer_dict = graph.net[layer_id][0][0]
             if layer_dict['type'] == 'conv':
                 if(layerNum < len(RCPruneflag[model_name])-1):
-                    # 需要将高位数据或者全精度数据是否大于零或小于等于0的标志位写到joint_module中，jointmodule内部再生成LAMT和ARMT，并再写回crossbar中，在crossbar中再读取出ARMT和LAMT指导工作，该部分应该在Tile部分写入，本代码中在此处更新
-                    RCPBitMap = layer_dict['Outputchannel']*layer_dict['Outputsize'][0]*layer_dict['Outputsize'][0]  # 本层输出数据大小
-                    RCPBitMap_comlatency = RCPBitMap*digital_period / layer_dict['tile_number'] # 首先有个比较器，挨个比较当前计算出来的值与0的大小,不同Tile间是并行执行的
-                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] # 用一个寄存器暂存下所有的标志位
-                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] # 从这个寄存器中读出来写入到jointmodule的buffer中去
-
-                    # 从buf_pe向joint_module中的buf写入全精度数据，这里的数据应该是标志位，即当前全精度值是否为0，然后读取出来
+                    RCPBitMap = layer_dict['Outputchannel']*layer_dict['Outputsize'][0]*layer_dict['Outputsize'][0] 
+                    RCPBitMap_comlatency = RCPBitMap*digital_period / layer_dict['tile_number'] 
+                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] 
+                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8 / layer_dict['tile_number'] 
                     Tilelatency = buffer()
                     Tilelatency.calculate_buf_read_latency(layer_dict['Outputchannel'] * layer_dict['Outputsize'][0] * layer_dict['Outputsize'][1] / 8)
                     Tilelatency.calculate_buf_write_latency(layer_dict['Outputchannel'] * layer_dict['Outputsize'][0] * layer_dict['Outputsize'][1] / 8)
 
-                    # 从joint_module中的buf中读取出来后执行Img2col操作，转换成下一层activation矩阵形状
                     Img2colLatency = activationDivision[model_name][layerNum+1][0] * activationDivision[model_name][layerNum+1][1]* digital_period
 
-                    # 计算每一行/列中零值的数量
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * 2 * digital_period  # digital_period是16位的adder的工作延迟，这里的adder不用16位，2位就够了
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period    # 如果是行剪枝的话，就要这一行中0值数量
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * 2 * digital_period  
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period  
                     else:
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period   # 如果是列剪枝的话，就要统计一列中0值的数量
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period  
 
-                    # 计算完每行中、每列中零值数量后，要进行一个排序操作，假设使用快排，时间复杂度为O(nlogn)
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         sumRC = activationDivision[model_name][layerNum + 1][0]+activationDivision[model_name][layerNum + 1][1]
                         if sumRC!=0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         sumRC = activationDivision[model_name][layerNum + 1][0]
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
@@ -703,47 +660,40 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
 
-                    # 排完序后，找到指定的剪枝阈值处的数据标签，找到阈值数据，然后进行比较
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         CompareLatency = (activationDivision[model_name][layerNum + 1][0]+activationDivision[model_name][layerNum + 1][1])*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         CompareLatency = activationDivision[model_name][layerNum + 1][0]*digital_period
                     else:
                         CompareLatency = activationDivision[model_name][layerNum + 1][1]*digital_period
 
-                    # 得到ARMT，并写入不同的crossbar中，写入时间，与下一层的行数或列数有关，如果是剪行的话，就是行数，如果是剪列的话，就是列数，且写的是标志位
-                    if RCPruneflag[model_name][layerNum+1] == 3:  # 如果是行列剪枝的话，则行数、列数均需要存储
+                    if RCPruneflag[model_name][layerNum+1] == 3:  
                         ARMT_wlatency = (activationDivision[model_name][layerNum+1][0] + activationDivision[model_name][layerNum+1][1])/8*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1: # 列剪枝或者行剪枝，那就只需要保存行数或者列数就好了
+                    elif RCPruneflag[model_name][layerNum+1] == 1:
                         ARMT_wlatency = activationDivision[model_name][layerNum + 1][0]/8 * digital_period
                     else:
                         ARMT_wlatency = activationDivision[model_name][layerNum + 1][1] / 8 * digital_period
                     model_latency = model_latency +RCPBitMap_comlatency+RCPBitMap_wlatency +RCPBitMap_rlatency+Tilelatency.buf_rlatency + Tilelatency.buf_wlatency+Img2colLatency+AdderLatency+sortLatency+CompareLatency+ARMT_wlatency
-                # 第一层除了要预测下一层的参数外，需要特殊处理下，他也是需要进行行列剪枝的，还是得由ReRAM执行
                 if(layerNum == 0):
-                    # 需要将高位数据或者全精度数据是否大于零或小于等于0的标志位写到joint_module中，jointmodule内部再生成LAMT和ARMT，并再写回crossbar中，在crossbar中再读取出ARMT和LAMT指导工作，该部分应该在Tile部分写入，本代码中在此处更新
-                    # 根据本层参数执行img2col
                     Img2colLatency = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]* digital_period
 
-                    RCPBitMap = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]  # 本层输入activation matrix大小
-                    RCPBitMap_comlatency = RCPBitMap*digital_period  # 首先有个比较器，挨个比较当前计算出来的值与0的大小,不同Tile间是并行执行的
-                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8  # 用一个寄存器暂存下所有的标志位
-                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8  # 从寄存器中读取标志位
+                    RCPBitMap = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]  
+                    RCPBitMap_comlatency = RCPBitMap*digital_period  
+                    RCPBitMap_wlatency = RCPBitMap * digital_period / 8  
+                    RCPBitMap_rlatency = RCPBitMap * digital_period / 8  
 
-                    # 计算每一行/列中零值的数量
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * 2 * digital_period  # digital_period是16位的adder的工作延迟，这里的adder不用16位，2位就够了
-                    elif RCPruneflag[model_name][layerNum] == 1:  # 行剪枝
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period    # 如果是行剪枝的话，就要这一行中0值数量
+                    if RCPruneflag[model_name][layerNum] == 3: 
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * 2 * digital_period  
+                    elif RCPruneflag[model_name][layerNum] == 1:  
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   
                     else:
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   # 如果是列剪枝的话，就要统计一列中0值的数量
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   
 
-                    # 计算完每行中、每列中零值数量后，要进行一个排序操作，假设使用快排，时间复杂度为O(nlogn)
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum] == 3: 
                         sumRC = activationDivision[model_name][layerNum][0]+activationDivision[model_name][layerNum][1]
                         if sumRC!=0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
-                    elif RCPruneflag[model_name][layerNum] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum] == 1:  
                         sumRC = activationDivision[model_name][layerNum][0]
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
@@ -752,18 +702,16 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
 
-                    # 排完序后，找到指定的剪枝阈值处的数据标签，找到阈值数据，然后进行比较
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum] == 3: 
                         CompareLatency = (activationDivision[model_name][layerNum][0]+activationDivision[model_name][layerNum][1])*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         CompareLatency = activationDivision[model_name][layerNum][0]*digital_period
                     else:
                         CompareLatency = activationDivision[model_name][layerNum][1]*digital_period
 
-                    # 得到ARMT，并写入不同的crossbar中，写入时间，与下一层的行数或列数有关，如果是剪行的话，就是行数，如果是剪列的话，就是列数，且写的是标志位
-                    if RCPruneflag[model_name][layerNum+1] == 3:  # 如果是行列剪枝的话，则行数、列数均需要存储
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         ARMT_wlatency = (activationDivision[model_name][layerNum][0] + activationDivision[model_name][layerNum][1])/8*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1: # 行剪枝，只需要保存行数
+                    elif RCPruneflag[model_name][layerNum+1] == 1: 
                         ARMT_wlatency = activationDivision[model_name][layerNum][0]/8 * digital_period
                     else:
                         ARMT_wlatency = activationDivision[model_name][layerNum][1] / 8 * digital_period
@@ -778,21 +726,17 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
             layer_dict = graph.net[layer_id][0][0]
             if layer_dict['type'] == 'conv':
                 if(layerNum < len(RCPruneflag[model_name])-1):
-                    # 需要将高位数据或者全精度数据是否大于零或小于等于0的标志位写到joint_module中，jointmodule内部再生成LAMT和ARMT，并再写回crossbar中，在crossbar中再读取出ARMT和LAMT指导工作，该部分应该在Tile部分写入，本代码中在此处更新
-                    # 计算每一行/列中零值的数量
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * 2 * digital_period  # digital_period是16位的adder的工作延迟，这里的adder不用16位，2位就够了
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period    # 如果是行剪枝的话，就要这一行中0值数量
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * 2 * digital_period  
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period    
                     else:
-                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period   # 如果是列剪枝的话，就要统计一列中0值的数量
-
-                    # 计算完每行中、每列中零值数量后，要进行一个排序操作，假设使用快排，时间复杂度为O(nlogn)
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                        AdderLatency = (activationDivision[model_name][layerNum+1][0]-1)*(activationDivision[model_name][layerNum+1][1]-1) * digital_period  
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         sumRC = activationDivision[model_name][layerNum + 1][0]+activationDivision[model_name][layerNum + 1][1]
                         if sumRC!=0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         sumRC = activationDivision[model_name][layerNum + 1][0]
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
@@ -801,48 +745,34 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
 
-                    # 排完序后，找到指定的剪枝阈值处的数据标签，找到阈值数据，然后进行比较
-                    if RCPruneflag[model_name][layerNum+1] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum+1] == 3: 
                         CompareLatency = (activationDivision[model_name][layerNum + 1][0]+activationDivision[model_name][layerNum + 1][1])*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         CompareLatency = activationDivision[model_name][layerNum + 1][0]*digital_period
                     else:
                         CompareLatency = activationDivision[model_name][layerNum + 1][1]*digital_period
 
-                    # 得到ARMT，并写入不同的crossbar中，写入时间，与下一层的行数或列数有关，如果是剪行的话，就是行数，如果是剪列的话，就是列数，且写的是标志位
-                    if RCPruneflag[model_name][layerNum+1] == 3:  # 如果是行列剪枝的话，则行数、列数均需要存储
+                    if RCPruneflag[model_name][layerNum+1] == 3:  
                         ARMT_wlatency = (activationDivision[model_name][layerNum+1][0] + activationDivision[model_name][layerNum+1][1])/8*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1: # 列剪枝或者行剪枝，那就只需要保存行数或者列数就好了
+                    elif RCPruneflag[model_name][layerNum+1] == 1: 
                         ARMT_wlatency = activationDivision[model_name][layerNum + 1][0]/8 * digital_period
                     else:
                         ARMT_wlatency = activationDivision[model_name][layerNum + 1][1] / 8 * digital_period
                     model_latency = model_latency+AdderLatency+sortLatency+CompareLatency+ARMT_wlatency
 
-                # 第一层除了要预测下一层的参数外，需要特殊处理下，他也是需要进行行列剪枝的，还是得由ReRAM执行
                 if(layerNum == 0):
-                    # 需要将高位数据或者全精度数据是否大于零或小于等于0的标志位写到joint_module中，jointmodule内部再生成LAMT和ARMT，并再写回crossbar中，在crossbar中再读取出ARMT和LAMT指导工作，该部分应该在Tile部分写入，本代码中在此处更新
-                    # 根据本层参数执行img2col
-                    # Img2colLatency = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]* digital_period
-                    #
-                    # RCPBitMap = activationDivision[model_name][layerNum][0] * activationDivision[model_name][layerNum][1]  # 本层输入activation matrix大小
-                    # RCPBitMap_comlatency = RCPBitMap*digital_period  # 首先有个比较器，挨个比较当前计算出来的值与0的大小,不同Tile间是并行执行的
-                    # RCPBitMap_wlatency = RCPBitMap * digital_period / 8  # 用一个寄存器暂存下所有的标志位
-                    # RCPBitMap_rlatency = RCPBitMap * digital_period / 8  # 从寄存器中读取标志位
-
-                    # 计算每一行/列中零值的数量
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * 2 * digital_period  # digital_period是16位的adder的工作延迟，这里的adder不用16位，2位就够了
-                    elif RCPruneflag[model_name][layerNum] == 1:  # 行剪枝
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period    # 如果是行剪枝的话，就要这一行中0值数量
+                    if RCPruneflag[model_name][layerNum] == 3:
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * 2 * digital_period 
+                    elif RCPruneflag[model_name][layerNum] == 1:  
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period    
                     else:
-                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   # 如果是列剪枝的话，就要统计一列中0值的数量
+                        AdderLatency = (activationDivision[model_name][layerNum][0]-1)*(activationDivision[model_name][layerNum][1]-1) * digital_period   
 
-                    # 计算完每行中、每列中零值数量后，要进行一个排序操作，假设使用快排，时间复杂度为O(nlogn)
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum] == 3: 
                         sumRC = activationDivision[model_name][layerNum][0]+activationDivision[model_name][layerNum][1]
                         if sumRC!=0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
-                    elif RCPruneflag[model_name][layerNum] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum] == 1: 
                         sumRC = activationDivision[model_name][layerNum][0]
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
@@ -851,18 +781,16 @@ def extraLatencyCal(model_latency,mode,graph,model_name,poolLatency):
                         if sumRC != 0:
                             sortLatency = sumRC * math.log2(sumRC) * digital_period
 
-                    # 排完序后，找到指定的剪枝阈值处的数据标签，找到阈值数据，然后进行比较
-                    if RCPruneflag[model_name][layerNum] == 3: # 如果行列都剪枝，则每行、每列中的数据都要相加，看看有几个0值
+                    if RCPruneflag[model_name][layerNum] == 3: 
                         CompareLatency = (activationDivision[model_name][layerNum][0]+activationDivision[model_name][layerNum][1])*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1:  # 行剪枝
+                    elif RCPruneflag[model_name][layerNum+1] == 1:  
                         CompareLatency = activationDivision[model_name][layerNum][0]*digital_period
                     else:
                         CompareLatency = activationDivision[model_name][layerNum][1]*digital_period
 
-                    # 得到ARMT，并写入不同的crossbar中，写入时间，与下一层的行数或列数有关，如果是剪行的话，就是行数，如果是剪列的话，就是列数，且写的是标志位
-                    if RCPruneflag[model_name][layerNum+1] == 3:  # 如果是行列剪枝的话，则行数、列数均需要存储
+                    if RCPruneflag[model_name][layerNum+1] == 3:  
                         ARMT_wlatency = (activationDivision[model_name][layerNum][0] + activationDivision[model_name][layerNum][1])/8*digital_period
-                    elif RCPruneflag[model_name][layerNum+1] == 1: # 行剪枝，只需要保存行数
+                    elif RCPruneflag[model_name][layerNum+1] == 1:
                         ARMT_wlatency = activationDivision[model_name][layerNum][0]/8 * digital_period
                     else:
                         ARMT_wlatency = activationDivision[model_name][layerNum][1] / 8 * digital_period
@@ -881,23 +809,23 @@ if __name__ == '__main__':
     mode = ['SRE','onlyRCP','shape','shapePipe']
     # mode = ['shape']
     test_SimConfig_path = os.path.join(os.path.dirname(os.getcwd()), "SimConfig.ini")
-    result = pd.DataFrame()  # 记录训练过程数据并存储到csv文件
-    performance_analyse = pd.DataFrame()  # 记录各部分执行时间占比
-    model_latency = [0.0] * len(mode)  # 记录每次模拟的总延迟数值
-    buffer_latency = [0.0] * len(mode)  # 记录每次模拟的buffer延迟数值
-    dac_latency = [0.0] * len(mode)  # 记录每次模拟的DAC延迟数值
-    crossbar_latency = [0.0] * len(mode)  # 记录每次模拟的Crossbar延迟数值
-    adc_latency = [0.0] * len(mode)  # 记录每次模拟的ADC延迟数值
-    shiftreg_latency = [0.0] * len(mode)  # 记录每次模拟的Shiftreg延迟数值
-    adder_latency = [0.0] * len(mode)  # 记录每次模拟的Adder延迟数值
-    latency_speedup = [0.0] * len(mode)  # 记录每次模拟的加速比
+    result = pd.DataFrame() 
+    performance_analyse = pd.DataFrame() 
+    model_latency = [0.0] * len(mode)  
+    buffer_latency = [0.0] * len(mode)  
+    dac_latency = [0.0] * len(mode) 
+    crossbar_latency = [0.0] * len(mode)  
+    adc_latency = [0.0] * len(mode)  
+    shiftreg_latency = [0.0] * len(mode)  
+    adder_latency = [0.0] * len(mode)  
+    latency_speedup = [0.0] * len(mode)  
     model_baseline = 0
 
     for i in range(0, len(model_name)):
         for j in range(0, len(mode)):
             __TestInterface = TrainTestInterface(model_name[i], 'MNSIM.Interface.cifar10', test_SimConfig_path, mode[j],condition)
             structure_file = __TestInterface.get_structure()
-            __TCG_mapping = TCG(structure_file, test_SimConfig_path)    # 计算buf_per_PE与buf_per_Tile
+            __TCG_mapping = TCG(structure_file, test_SimConfig_path)    
             __latency = Model_latency(test_SimConfig_path, __TCG_mapping)
             __latency.calculate_model_latency(mode[j],condition)
             model_latency[j] = __latency.model_latency_output(1, 1)

@@ -325,7 +325,6 @@ bn_dict = {
     }
 }
 
-# 定义打印卷积层和全连接层信息的函数
 def print_layer(model):
     valueSum, nonzeroSum = 0, 0
     layer_count = 1
@@ -335,16 +334,9 @@ def print_layer(model):
                 for groupName, group in layer.named_children():
                     for subLayer in group:
                         if isinstance(subLayer, nn.Conv2d):
-                            print(layer_count)
                             layer_count += 1
-                            print("卷积核的大小为：", subLayer.kernel_size)
-                            print("卷积核的stride为：", subLayer.stride)
-                            print("卷积层的padding为：", subLayer.padding)
-                            print("BN的大小为：", subLayer.in_channels)
-                            print('\n')
-                            values = subLayer.weight.detach().cpu().numpy()  # numpy格式
+                            values = subLayer.weight.detach().cpu().numpy()  
                             nonzero = np.count_nonzero(values, axis=None)
-                            # print("该卷积层共有{}个权重，非零元素个数为{}\n".format(values.size, nonzero))
                             valueSum += values.size
                             nonzeroSum += nonzero
             else:
@@ -354,14 +346,11 @@ def print_layer(model):
                     layerName = "全连接层"
                 else:
                     continue
-                # print("{}的尺寸为：".format(layerName), layer.weight.shape)
-                values = layer.weight.detach().cpu().numpy()  # numpy格式
+                values = layer.weight.detach().cpu().numpy()  
                 nonzero = np.count_nonzero(values, axis=None)
-                # print("该{}共有{}个权重，非零元素个数为{}\n".format(layerName, values.size, nonzero))
                 valueSum += values.size
                 nonzeroSum += nonzero
-    print("总权重个数为{}, 非零元素个数为{}".format(valueSum, nonzeroSum))
-# 以上是pyd添加
+
 class Conv2dTest(nn.Conv2d):
     def __init__(self,
                  ratio,
@@ -487,17 +476,17 @@ def prepare(model, ratio,quantize,quantize_w,quantize_i,model_name,compute_mode,
                 bn_dict[model_name][str(layer_cnt)]['running_var'] = child.running_var.data
                 bn_dict[model_name][str(layer_cnt)]['weight'] = child.weight.data
             else:
-                addActivationPruneOp(child)  # 这是用来迭代的，Maxpool层的功能是不变的
+                addActivationPruneOp(child) 
     layer_cnt = 0
     if not inplace:
         model = copy.deepcopy(model)
-    addActivationPruneOp(model)  # 为每一个卷积层添加输入特征图剪枝操作
+    addActivationPruneOp(model)  
     np.save('my_file.npy', bn_dict)
     return model
 
 def getModel(modelName):
     if modelName == 'LeNet':
-        return getLeNet()  # 加载原始模型框架
+        return getLeNet()  
     elif modelName == 'AlexNet':
         return getAlexnet()
     elif modelName == 'VGG16':
@@ -516,7 +505,7 @@ def getModel(modelName):
 def getDataSet(modelName,batchSize,imgSize):
     if modelName == 'VGG16' or modelName == 'AlexNet' or modelName == 'ResNet'  or modelName == 'SqueezeNet' or modelName=='InceptionV3' or modelName =='VGG8' or modelName == 'NewResNet' or modelName == 'ZFNet':
         dataloaders, dataset_sizes = load_cifar10(batch_size=batchSize, pth_path='./data',
-                                                  img_size=imgSize)  # 确定数据集
+                                                  img_size=imgSize)  
     elif modelName == 'LeNet':
         dataloaders, dataset_sizes = load_mnist(batch_size=batchSize, path='./data', img_size=imgSize)
 

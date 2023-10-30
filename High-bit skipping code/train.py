@@ -93,9 +93,9 @@ def load_cifar100(batch_size,pth_path,img_size):
     return dataloaders,dataset_size
 def WriteData(savePath, msg):
 
-    full_path = savePath + '/Accuracy.txt'  # 也可以创建一个.doc的word文档
+    full_path = savePath + '/Accuracy.txt'  
     file = open(full_path, 'a')
-    file.write(msg)   #msg也就是下面的Hello world!
+    file.write(msg)  
     file.write('\n')
     file.close()
 def test_model(model,dataloaders,dataset_sizes,criterion):
@@ -108,10 +108,6 @@ def test_model(model,dataloaders,dataset_sizes,criterion):
         running_acc = 0.0
         for inputs,labels in tqdm(dataloaders[phase]):
             inputs,labels = inputs.cuda(),labels.cuda()
-            # sha = inputs.size()
-            # sha = sha[0]*sha[1]*sha[2]*sha[3]
-            # sha = torch.range(1,sha,device='cuda:0')
-            # sha = sha.reshape_as(inputs)
             outputs = model(inputs)
             _,preds = torch.max(outputs,1)
             loss = criterion(outputs,labels)
@@ -129,7 +125,6 @@ def test_model(model,dataloaders,dataset_sizes,criterion):
 
 def train_model_jiang(model, dataloaders, dataset_sizes,ratio, type,quantize,pattern,criterion, optimizer, name,scheduler=None, num_epochs=100,rerun=False):
     if rerun == True:
-        print('我进来了')
         print(num_epochs)
         since = time.time()
         model = torch.load('../../hdd/hdd_o/pth/AlexNet/ratio=0.8/Activation/test_17.pth')

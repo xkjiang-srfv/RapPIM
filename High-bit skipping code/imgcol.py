@@ -64,13 +64,13 @@ def get_im2col_indices(images_shape, filter_shape, padding, stride=(1, 1)):  # s
     return (k, i, j)
 
 def activationSlidePrune(input, ratio, r_or_c, pattern='Train'):
-    matrixOne = torch.ones(input.shape, device='cuda:0')  # 设置一个全1矩阵
+    matrixOne = torch.ones(input.shape, device='cuda:0')  
     # x = copy.deepcopy(input)
     x = torch.clone(torch.detach(input))
-    andOp = torch.logical_and(matrixOne, x)  # 进行与操作
+    andOp = torch.logical_and(matrixOne, x)  
 
     if r_or_c == 1:
-        andSum_row = torch.sum(andOp, dim=1)  # 每行的数据进行一个相加
+        andSum_row = torch.sum(andOp, dim=1)  
         list_queue = torch.sort(andSum_row)
         num = torch.floor(torch.tensor(len(list_queue.values) * ratio[0]))
         r = list_queue.values[int(num)]
@@ -79,9 +79,6 @@ def activationSlidePrune(input, ratio, r_or_c, pattern='Train'):
             pruneTensor_row[(andSum_row <= r),] = 1
         else:
             pruneTensor_row[(andSum_row < r),] = 1
-        # aaaa = torch.sum(pruneTensor_row)
-        # print("只剪行:", aaaa)
-        # print("剪枝比例为：", aaaa / len(pruneTensor_row))
         if pattern == 'test':
             return (1,pruneTensor_row)
         else:
@@ -89,9 +86,7 @@ def activationSlidePrune(input, ratio, r_or_c, pattern='Train'):
             return input
 
     elif r_or_c == 2:
-        # 列剪枝
-        # print('执行列剪枝，ratio=', ratio)
-        andSum_column = torch.sum(andOp, dim=0)  # 每行的数据进行一个相加
+        andSum_column = torch.sum(andOp, dim=0)  
         # q = (sum(andSum_column) // len(andSum_column)) * ratio
         list_queue = torch.sort(andSum_column)
         num = torch.floor(torch.tensor(len(list_queue.values) * ratio[1]))
@@ -101,9 +96,6 @@ def activationSlidePrune(input, ratio, r_or_c, pattern='Train'):
             pruneTensor_column[(andSum_column <= r),] = 1
         else:
             pruneTensor_column[(andSum_column < r),] = 1
-        # aaaa = torch.sum(pruneTensor_column)
-        # print("只剪列:", aaaa // 64)
-        # print("剪枝比例为：", aaaa / len(pruneTensor_column))
         if pattern == 'test':
             return (2,pruneTensor_column)
         else:
@@ -135,12 +127,6 @@ def activationSlidePrune(input, ratio, r_or_c, pattern='Train'):
             pruneTensor_column[(andSum_column <= r2),] = 1
         else:
             pruneTensor_column[(andSum_column < r2),] = 1
-
-        # aaaa2 = torch.sum(pruneTensor_column)
-        # print("剪的行:", aaaa1)
-        # print("剪的列:", aaaa2 // 64)
-        # print("行剪枝比例为：", aaaa1 / len(pruneTensor_row))
-        # print("列剪枝比例为：", aaaa2 / len(pruneTensor_column))
         if pattern == 'test':
             return (3,pruneTensor_row, pruneTensor_column)
         else:

@@ -79,21 +79,18 @@ class Round(Function):
         return output
 
     @staticmethod
-    def backward(self, grad_output):  # 跳过伪量化这一层的梯度计算，让梯度直接流到前一层
+    def backward(self, grad_output):  
         grad_input = grad_output.clone()
         return grad_input
 
-# A(特征)量化
 class ActivationQuantizer(nn.Module):
     def __init__(self):
         super(ActivationQuantizer, self).__init__()
 
-    # 取整(ste)
     def round(self, input):
         output = Round.apply(input)
         return output
 
-    # 量化/反量化
     def forward(self, input,bits,r_or_c = None,pattern=None,ratio=None,filter_shape=None,stride=None,padding=None,n_filters=None,batch_size=None,input_shape=None):
         self.bits = bits
         self.ratio = ratio
@@ -114,20 +111,16 @@ class ActivationQuantizer(nn.Module):
             min_val, max_val = min_val.item(), max_val.item()
             scale = (max_val - min_val) / (2 ** self.bits - 1)
             output = self.round(input / scale)
-            # 打印FC层每行1的个数
-            # print(output.shape[0]*8)
-            # oneCal_FC(output,'SRE')
-            # oneCal_FC(output, 'OnlyRCP')
+
             oneCal_FC(output, 'RCP_Skip')
             if pattern == 'Conv':
                 self.X_col = image_to_column(output, self.filter_shape, stride=self.stride, output_shape=self.padding)
                 if self.ratio != 0:
                     self.X_col = self.activationSlidePrune(self.X_col, self.ratio,r_or_c)
-                #留下高4bit的数据
                 self.X_col = self.X_col.to('cpu').numpy()
                 self.X_col = np.trunc((np.trunc(self.X_col / 16)) * 16)
 
-                self.X_col = scale * self.X_col  # 再反量化回float32
+                self.X_col = scale * self.X_col  
                 return self.X_col
             else:
                 output = output * scale
@@ -158,12 +151,11 @@ class ActivationQuantizer(nn.Module):
             print(i,andSum[i])
 
     def activationSlidePrune(self,input,ratio,r_or_c):
-        matrixOne = torch.ones(input.shape,device='cuda:0')  # 设置一个全1矩阵
-        # x = copy.deepcopy(input)
+        matrixOne = torch.ones(input.shape,device='cuda:0')  
         x = torch.clone(torch.detach(input))
-        andOp = torch.logical_and(matrixOne,x)  # 进行与操作
+        andOp = torch.logical_and(matrixOne,x)  
         if r_or_c == 1:
-            andSum_row = torch.sum(andOp,dim=1)  # 每行的数据进行一个相加
+            andSum_row = torch.sum(andOp,dim=1)  
             list_queue = torch.sort(andSum_row)
             num = torch.floor(torch.tensor(len(list_queue.values)*ratio[0]))
             r = list_queue.values[int(num)]
@@ -171,12 +163,8 @@ class ActivationQuantizer(nn.Module):
             pruneTensor_row[(andSum_row < r),] = 1
             aaaa = torch.sum(pruneTensor_row)
             input[(andSum_row < r),] = 0
-            print("只剪行:",aaaa)
-            #以上进行行剪枝
         elif r_or_c == 2:
-            #列剪枝
-            # print('执行列剪枝，ratio=', ratio)
-            andSum_column = torch.sum(andOp, dim=0)  # 每行的数据进行一个相加
+            andSum_column = torch.sum(andOp, dim=0)  
             # q = (sum(andSum_column) // len(andSum_column)) * ratio
             list_queue = torch.sort(andSum_column)
             num = torch.ceil(torch.tensor(len(list_queue.values)*ratio[1]))
@@ -185,10 +173,7 @@ class ActivationQuantizer(nn.Module):
             pruneTensor_row[(andSum_column < r),] = 1
             aaaa = torch.sum(pruneTensor_row)
             input[:,(andSum_column < r)] = 0
-            print("只剪列:", aaaa // 32)
-            # 以上进行列剪枝
         else:
-            # print('执行行列剪枝，ratio=', ratio)
             andSum_row = torch.sum(andOp, dim=1)
             andSum_column = torch.sum(andOp, dim=0)
 
@@ -211,43 +196,17 @@ class ActivationQuantizer(nn.Module):
 
             input[(andSum_row < r1),] = 0
             input[:, (andSum_column < r2)] = 0
-            print("剪的行:", aaaa1)
-            print("剪的列:", aaaa2 // 32)
-
-
-        # lens = len(zeroTensor)
-        # zeroRatio = (sum(zeroTensor), float(sum(zeroTensor)) / lens)
-        # pruneRatio = (sum(pruneTensor) - sum(zeroTensor), float(sum(pruneTensor) - sum(zeroTensor)) / lens)
-        # input[(andSum_row<=p),] = 0
 
         return input
 
-        # andSum = torch.sum(andOp,dim=1)  # 每行的数据进行一个相加
-        # # self.accuracyTest(andSum)
-        # p = (sum(andSum) // len(andSum))*ratio
-        # # self.compressionRateStatistics(input, andSum, p)
-        # zeroTensor = torch.zeros_like(andSum)
-        # pruneTensor = torch.zeros_like(andSum)
-        # pruneTensor[(andSum <= p),] = 1
-        # zeroTensor[(andSum == 0),] = 1
-        # lens = len(zeroTensor)
-        # zeroRatio = (sum(zeroTensor), float(sum(zeroTensor)) / lens)
-        # pruneRatio = (sum(pruneTensor) - sum(zeroTensor), float(sum(pruneTensor) - sum(zeroTensor)) / lens)
-        # input[(andSum<=p),] = 0
-        #
-        # return input
-
-# W(权重)量化
 class WeightQuantizer(nn.Module):
     def __init__(self):
         super(WeightQuantizer, self).__init__()
 
-    # 取整(ste)
     def round(self, input):
         output = Round.apply(input)
         return output
 
-    # 量化/反量化
     def forward(self, input,bits,pattern,n_filters):
         self.bits = bits
         self.n_filters = n_filters
@@ -257,32 +216,13 @@ class WeightQuantizer(nn.Module):
             print('！Binary quantization is not supported ！')
             assert self.bits != 1
         else:
-            # min_val,max_val = input.min(),input.max()
-            # min_val,max_val = min_val.item(),max_val.item()
-            # scale = (max_val-min_val)/(2**self.bits - 1)
-            # output = self.round(input/scale)
-            # output = output.reshape((self.n_filters, -1))
-            # output = scale*output
-            # 权重img2col展开
-            '''
-            if pattern == 'Conv':
-                output = output.reshape((self.n_filters, -1))
-                output = output.to('cpu').numpy()
-                output = np.trunc((np.trunc(output / 16)) * 16)
-            output = scale*output   # 再反量化回32位
-            '''
-            # output = input
             min_val, max_val = input.min(), input.max()
             min_val, max_val = min_val.item(), max_val.item()
             scale = (max_val - min_val) / (2 ** self.bits - 1)
             output = self.round(input / scale)
             if pattern == 'Conv':
                 output = output.reshape((self.n_filters, -1))
-                # 留下高4bit数据
                 output = output.to('cpu').numpy()
                 output = np.trunc((np.trunc(output / 16)) * 16)
-
-            output = scale * output  # 先全部量化成8位
-            # output = input
+            output = scale * output 
         return output
-        # 返回的output是img2col展开后的权重矩阵

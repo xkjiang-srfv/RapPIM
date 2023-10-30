@@ -115,14 +115,13 @@ def test_model(model,dataloaders,dataset_sizes,criterion):
 
 def WriteData(savePath, msg):
 
-    full_path = savePath + '/Accuracy.txt'  # 也可以创建一个.doc的word文档
+    full_path = savePath + '/Accuracy.txt' 
     file = open(full_path, 'a')
-    file.write(msg)   #msg也就是下面的Hello world!
+    file.write(msg)   
     # file.close()
 
 def train_model_jiang(model, dataloaders, dataset_sizes,ratio, type,quantize,pattern,criterion, optimizer, name,scheduler=None, num_epochs=100,rerun=False):
     if rerun == True:
-        print('我进来了')
         print(num_epochs)
         since = time.time()
         model = torch.load('../../hdd/hdd_o/pth/AlexNet/ratio=0.8/Activation/test_17.pth')
@@ -170,7 +169,7 @@ def train_model_jiang(model, dataloaders, dataset_sizes,ratio, type,quantize,pat
                         outputs = model(inputs)
                         _, preds = torch.max(outputs, 1)
                         loss = criterion(outputs, labels)
-                        loss_re = 0.0  #正则化损失
+                        loss_re = 0.0  
                         for name,par in model.named_parameters():
                             loss_re = loss_re + weight_deacy * 0.5* torch.sum(torch.pow(par,2))
                         loss = loss + loss_re
@@ -267,7 +266,7 @@ def train_model_jiang(model, dataloaders, dataset_sizes,ratio, type,quantize,pat
                         outputs = model(inputs)
                         _, preds = torch.max(outputs, 1)
                         loss = criterion(outputs, labels)
-                        loss_re = 0.0  # 正则化损失
+                        loss_re = 0.0  
                         for name, par in model.named_parameters():
                             loss_re = loss_re + weight_deacy * 0.5 * torch.sum(torch.pow(par, 2))
                         loss = loss + loss_re
